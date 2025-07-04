@@ -1,0 +1,140 @@
+🔧 CÍL APLIKACE:
+Vytvoř jednoduchou, bezpečnou webovou aplikaci, kde uživatel po zadání URL zaplatí 50 Kč a získá automatický audit čitelnosti a připravenosti webu pro AI.
+
+Aplikace musí být plně funkční, bezpečná, lokalizovaná (čeština a angličtina) a právně v pořádku.
+
+🔹 1. UŽIVATELSKÉ FLOW:
+Landing Page (LP)
+
+Vstupní stránka s moderním flat designem, gradientním pozadím, přepínačem světlý/tmavý režim a přepínačem jazyků 🇨🇿 / 🇬🇧
+
+Texty v češtině i angličtině
+
+Formulář pro zadání URL a e-mailu
+
+URL lze zadat i bez https:// (automaticky doplň)
+
+Validace vstupu
+
+E-mail bude použit pro odeslání výsledků
+
+Po zadání údajů:
+
+Spusť se technická analýza webu (viz níže)
+
+Po dokončení se zobrazí platební brána (jednorázová platba 50 Kč)
+
+Uživatel musí před zaplacením potvrdit:
+
+Obchodní podmínky
+
+Souhlas se zpracováním osobních údajů
+
+Souhlas s komerčním využitím dat (včetně sdílení a prodeje jiným subjektům)
+
+Po zaplacení:
+
+Zobrazí se výsledky analýzy (tabulka skóre + metodika)
+
+Možnost stáhnout výsledek jako PDF
+
+PDF se automaticky odešle na zadaný e-mail
+
+Data (URL, e-mail, výsledek, IP, souhlas) se uloží do log.csv nebo log.txt
+
+🧪 2. CO APLIKACE KONTROLUJE:
+Pro každou oblast uveď výsledek v % skóre, uveď stručnou metodiku (v češtině i angličtině). Nechci rady co zlepšit, jen hodnocení a metodiku.
+
+Oblast	Co přesně zkontrolovat	Výstup
+Struktura HTML	Přítomnost <h1>, nadpisů, sémantických značek	% skóre
+Metadata	Title, meta description, OpenGraph	% skóre
+Schema.org	Validní JSON-LD (např. Article, Product)	% skóre
+Obsah bez JS	Je hlavní text dostupný v HTML	% skóre
+Sitemap a robots.txt	Jsou přístupné, správně nastavené	% skóre
+Přístupnost (WCAG)	alt tagy, kontrast, přehlednost	% skóre
+Rychlost (např. PageSpeed API)	Hodnocení rychlosti načítání	% skóre
+Jazyková čitelnost	Délka vět, čitelnost, přehlednost textu	% skóre
+Prolinkování a struktura	Anchor texty, vnitřní odkazy	% skóre
+
+➡️ Na konci vypočítej celkové skóre webu (např. 84,3 %).
+
+🛡️ 3. PRÁVNÍ A BEZPEČNOSTNÍ POVINNOSTI:
+Vytvoř tyto dokumenty v češtině i angličtině:
+
+Obchodní podmínky
+
+Zásady ochrany osobních údajů
+
+Souhlas se zpracováním a sdílením dat
+
+Právní texty musí obsahovat:
+
+Transparentní nakládání s daty dle GDPR
+
+Informaci, že data (včetně e-mailu a výsledků) mohou být:
+
+uchovávána
+
+zpracována pro marketing a vývoj
+
+sdílena nebo prodána třetím stranám
+
+Souhlas s tímto musí být aktivně potvrzen před zaplacením (checkbox)
+
+Souhlas musí být zaznamenán (čas, IP, e-mail) do log.csv
+
+Bezpečnost:
+
+Komunikace přes HTTPS
+
+Zabezpečené zacházení s uživatelskými vstupy (XSS, injection)
+
+Možnost přepnout jazyk bez ztráty dat
+
+📦 4. VÝSTUPY:
+Zobrazení výsledků po zaplacení
+
+Vygenerování PDF s výsledkem a metodikou
+
+Odeslání PDF na e-mail
+
+Logování všech údajů do log.csv (e-mail, IP, URL, výsledek, čas, souhlas)
+
+💳 5. PLATBA:
+Integruj jednoduchou platební bránu (např. Stripe, SimplePay, ComGate, PayPal)
+
+Cena za analýzu: 50 Kč
+
+Jednorázová platba, žádná registrace
+
+🎨 6. DESIGN:
+Flat design
+
+Gradientní barvy
+
+Přepínání světlo / tma
+
+Mobilní responzivita
+
+Jazykový přepínač (CZ/EN)
+
+💬 7. LOKALIZACE:
+Všechny texty, výstupy, metodiky, právní texty v češtině i angličtině
+
+Přepínač jazyků v pravém horním rohu
+
+🎯 CÍL:
+Vytvořit funkční MVP aplikace, která:
+
+Přijme URL a e-mail
+
+Provede technickou analýzu webu
+
+Vyžádá souhlas s podmínkami
+
+Zpracuje platbu
+
+Vygeneruje výsledek + PDF + log
+
+🛠️ Nepoužívej žádný CMS, nevyžaduji databázi, nechci žádné přihlášení – vše má být jednorázové a maximálně jednoduché.
+
