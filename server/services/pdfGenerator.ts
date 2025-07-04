@@ -1,15 +1,13 @@
 import { DetailedAnalysisResults } from "@shared/schema";
+import puppeteer from "puppeteer";
 
 export class PDFGenerator {
-  generatePDFReport(
+  async generatePDFReport(
     url: string,
     email: string,
     results: DetailedAnalysisResults,
     language: string = "cs"
-  ): Buffer {
-    // This is a simplified PDF generation
-    // In a real implementation, you would use a library like puppeteer or PDFKit
-    
+  ): Promise<Buffer> {
     const reportData = {
       title: language === "cs" ? "WebAudit Pro - Analýza webu" : "WebAudit Pro - Website Analysis",
       url,
@@ -68,9 +66,31 @@ export class PDFGenerator {
     // Generate HTML content for PDF
     const htmlContent = this.generateHTMLReport(reportData);
     
-    // For this implementation, we'll return a mock PDF buffer
-    // In production, you would use a library like puppeteer to generate actual PDF
-    return Buffer.from(htmlContent, 'utf8');
+    // Use Puppeteer to generate actual PDF
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    
+    try {
+      const page = await browser.newPage();
+      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+      
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: {
+          top: '20mm',
+          right: '20mm',
+          bottom: '20mm',
+          left: '20mm'
+        }
+      });
+      
+      return Buffer.from(pdfBuffer);
+    } finally {
+      await browser.close();
+    }
   }
 
   private generateHTMLReport(data: any): string {

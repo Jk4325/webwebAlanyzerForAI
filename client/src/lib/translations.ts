@@ -20,7 +20,7 @@ export const translations = {
     
     // Loading
     analyzingTitle: "Analyzujeme váš web...",
-    analyzingSubtitle: "Prosím čekejte, analýza může trvat 30-60 sekund.",
+    analyzingSubtitle: "Procházíme všechny stránky webu a analyzujeme 9 oblastí. Může to trvat 1-2 minuty.",
     
     // Results
     resultsTitle: "Výsledky analýzy",
@@ -90,7 +90,7 @@ export const translations = {
     
     // Loading
     analyzingTitle: "Analyzing your website...",
-    analyzingSubtitle: "Please wait, analysis may take 30-60 seconds.",
+    analyzingSubtitle: "We're crawling all pages and analyzing 9 areas. This may take 1-2 minutes.",
     
     // Results
     resultsTitle: "Analysis Results",

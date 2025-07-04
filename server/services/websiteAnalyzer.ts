@@ -4,53 +4,176 @@ import axios from "axios";
 
 export class WebsiteAnalyzer {
   private userAgent = "Mozilla/5.0 (compatible; WebAuditBot/1.0)";
+  private visitedUrls = new Set<string>();
+  private maxUrls = 10; // Limit crawling to prevent infinite loops
 
   async analyzeWebsite(url: string): Promise<DetailedAnalysisResults> {
     try {
-      const response = await axios.get(url, {
-        headers: { "User-Agent": this.userAgent },
-        timeout: 10000,
-        maxRedirects: 3,
-      });
-
-      const $ = cheerio.load(response.data);
-      const htmlContent = response.data;
-
-      const results: DetailedAnalysisResults = {
-        htmlStructure: this.analyzeHtmlStructure($, htmlContent),
-        metadata: this.analyzeMetadata($, htmlContent),
-        schema: this.analyzeSchema($, htmlContent),
-        contentWithoutJs: this.analyzeContentWithoutJs($, htmlContent),
-        sitemapRobots: await this.analyzeSitemapRobots(url),
-        accessibility: this.analyzeAccessibility($, htmlContent),
-        speed: await this.analyzeSpeed(url),
-        readability: this.analyzeReadability($, htmlContent),
-        internalLinking: this.analyzeInternalLinking($, url),
-        totalScore: 0,
-      };
-
-      // Calculate total score
-      const scores = [
-        results.htmlStructure.score,
-        results.metadata.score,
-        results.schema.score,
-        results.contentWithoutJs.score,
-        results.sitemapRobots.score,
-        results.accessibility.score,
-        results.speed.score,
-        results.readability.score,
-        results.internalLinking.score,
-      ];
-
-      results.totalScore = Math.round(
-        (scores.reduce((sum, score) => sum + score, 0) / scores.length) * 100
-      ) / 100;
-
-      return results;
+      // Reset visited URLs for new analysis
+      this.visitedUrls.clear();
+      
+      // Discover all URLs on the website
+      const allUrls = await this.discoverAllUrls(url);
+      console.log(`Found ${allUrls.length} URLs to analyze`);
+      
+      // Analyze each URL and aggregate results
+      const aggregatedResults = await this.analyzeAllPages(allUrls);
+      
+      return aggregatedResults;
     } catch (error) {
       console.error("Website analysis failed:", error);
       return this.getEmptyResults();
     }
+  }
+
+  private async discoverAllUrls(baseUrl: string): Promise<string[]> {
+    const urls = new Set<string>([baseUrl]);
+    const toVisit = [baseUrl];
+    const baseDomain = new URL(baseUrl).hostname;
+
+    while (toVisit.length > 0 && urls.size < this.maxUrls) {
+      const currentUrl = toVisit.shift()!;
+      if (this.visitedUrls.has(currentUrl)) continue;
+      
+      this.visitedUrls.add(currentUrl);
+
+      try {
+        const response = await axios.get(currentUrl, {
+          headers: { "User-Agent": this.userAgent },
+          timeout: 5000,
+          maxRedirects: 3,
+        });
+
+        const $ = cheerio.load(response.data);
+        
+        // Find all internal links
+        $('a[href]').each((_, element) => {
+          const href = $(element).attr('href');
+          if (href) {
+            try {
+              const fullUrl = new URL(href, currentUrl).href;
+              const urlDomain = new URL(fullUrl).hostname;
+              
+              // Only add URLs from the same domain
+              if (urlDomain === baseDomain && !this.visitedUrls.has(fullUrl) && urls.size < this.maxUrls) {
+                urls.add(fullUrl);
+                toVisit.push(fullUrl);
+              }
+            } catch (e) {
+              // Invalid URL, skip
+            }
+          }
+        });
+      } catch (error) {
+        console.warn(`Failed to fetch ${currentUrl}:`, error.message);
+      }
+    }
+
+    return Array.from(urls);
+  }
+
+  private async analyzeAllPages(urls: string[]): Promise<DetailedAnalysisResults> {
+    const pageResults: DetailedAnalysisResults[] = [];
+
+    for (const url of urls) {
+      try {
+        const result = await this.analyzeSinglePage(url);
+        pageResults.push(result);
+      } catch (error) {
+        console.warn(`Failed to analyze ${url}:`, error.message);
+      }
+    }
+
+    // Aggregate results from all pages
+    return this.aggregateResults(pageResults);
+  }
+
+  private async analyzeSinglePage(url: string): Promise<DetailedAnalysisResults> {
+    const response = await axios.get(url, {
+      headers: { "User-Agent": this.userAgent },
+      timeout: 10000,
+      maxRedirects: 3,
+    });
+
+    const $ = cheerio.load(response.data);
+    const htmlContent = response.data;
+
+    const results: DetailedAnalysisResults = {
+      htmlStructure: this.analyzeHtmlStructure($, htmlContent),
+      metadata: this.analyzeMetadata($, htmlContent),
+      schema: this.analyzeSchema($, htmlContent),
+      contentWithoutJs: this.analyzeContentWithoutJs($, htmlContent),
+      sitemapRobots: await this.analyzeSitemapRobots(url),
+      accessibility: this.analyzeAccessibility($, htmlContent),
+      speed: await this.analyzeSpeed(url),
+      readability: this.analyzeReadability($, htmlContent),
+      internalLinking: this.analyzeInternalLinking($, url),
+      totalScore: 0,
+    };
+
+    // Calculate total score for this page
+    const scores = [
+      results.htmlStructure.score,
+      results.metadata.score,
+      results.schema.score,
+      results.contentWithoutJs.score,
+      results.sitemapRobots.score,
+      results.accessibility.score,
+      results.speed.score,
+      results.readability.score,
+      results.internalLinking.score,
+    ];
+
+    results.totalScore = Math.round(
+      (scores.reduce((sum, score) => sum + score, 0) / scores.length) * 100
+    ) / 100;
+
+    return results;
+  }
+
+  private aggregateResults(pageResults: DetailedAnalysisResults[]): DetailedAnalysisResults {
+    if (pageResults.length === 0) {
+      return this.getEmptyResults();
+    }
+
+    // Calculate average scores across all pages
+    const avgResult: DetailedAnalysisResults = {
+      htmlStructure: this.averageAnalysisResult(pageResults.map(r => r.htmlStructure)),
+      metadata: this.averageAnalysisResult(pageResults.map(r => r.metadata)),
+      schema: this.averageAnalysisResult(pageResults.map(r => r.schema)),
+      contentWithoutJs: this.averageAnalysisResult(pageResults.map(r => r.contentWithoutJs)),
+      sitemapRobots: this.averageAnalysisResult(pageResults.map(r => r.sitemapRobots)),
+      accessibility: this.averageAnalysisResult(pageResults.map(r => r.accessibility)),
+      speed: this.averageAnalysisResult(pageResults.map(r => r.speed)),
+      readability: this.averageAnalysisResult(pageResults.map(r => r.readability)),
+      internalLinking: this.averageAnalysisResult(pageResults.map(r => r.internalLinking)),
+      totalScore: 0,
+    };
+
+    // Calculate overall total score
+    const totalScores = pageResults.map(r => r.totalScore);
+    avgResult.totalScore = Math.round(
+      (totalScores.reduce((sum, score) => sum + score, 0) / totalScores.length) * 100
+    ) / 100;
+
+    return avgResult;
+  }
+
+  private averageAnalysisResult(results: AnalysisResult[]): AnalysisResult {
+    const avgScore = results.reduce((sum, r) => sum + r.score, 0) / results.length;
+    
+    return {
+      score: Math.round(avgScore * 100) / 100,
+      methodology: results[0].methodology, // Use first result's methodology
+      details: {
+        pagesAnalyzed: results.length,
+        averageScore: Math.round(avgScore * 100) / 100,
+        scoreRange: {
+          min: Math.min(...results.map(r => r.score)),
+          max: Math.max(...results.map(r => r.score))
+        }
+      }
+    };
   }
 
   private analyzeHtmlStructure($: cheerio.CheerioAPI, html: string): AnalysisResult {

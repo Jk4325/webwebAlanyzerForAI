@@ -100,7 +100,14 @@ WebAudit Pro is a web application that provides comprehensive website analysis s
 
 ```
 Changelog:
-- July 04, 2025. Initial setup
+- July 04, 2025. Initial setup with basic website analysis functionality
+- July 04, 2025. Major improvements implemented:
+  * Full website crawling - analyzes ALL pages (up to 10 URLs)
+  * Simplified results display - just metrics + percentages + payment prompt
+  * Real Stripe payment integration with secure processing
+  * Actual PDF generation using Puppeteer
+  * Enhanced UX with better loading messages
+  * Improved design with modern cards and badges
 ```
 
 ## User Preferences

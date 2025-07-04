@@ -7,10 +7,18 @@ import { WebsiteAnalyzer } from "./services/websiteAnalyzer";
 import { PDFGenerator } from "./services/pdfGenerator";
 import { CSVLogger } from "./services/csvLogger";
 import helmet from "helmet";
+import Stripe from "stripe";
 
 const websiteAnalyzer = new WebsiteAnalyzer();
 const pdfGenerator = new PDFGenerator();
 const csvLogger = new CSVLogger();
+
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2023-10-16",
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Security middleware
@@ -155,12 +163,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Mock payment processing
-  app.post("/api/analyses/:id/payment", async (req, res) => {
+  // Create Stripe payment intent
+  app.post("/api/create-payment-intent", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const analysis = await storage.getAnalysis(id);
+      const { analysisId } = req.body;
       
+      const analysis = await storage.getAnalysis(analysisId);
       if (!analysis) {
         return res.status(404).json({ error: "Analysis not found" });
       }
@@ -170,8 +178,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "All consents must be accepted" });
       }
 
-      // Mock payment processing (always succeeds)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: 5000, // 50 CZK in haléře (cents)
+        currency: "czk",
+        description: `WebAudit Pro - Analýza webu ${analysis.url}`,
+        metadata: {
+          analysisId: analysisId.toString(),
+          email: analysis.email,
+          url: analysis.url,
+        },
+      });
+
+      res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (error) {
+      console.error("Payment intent creation error:", error);
+      res.status(500).json({ error: "Payment intent creation failed" });
+    }
+  });
+
+  // Confirm payment completion
+  app.post("/api/analyses/:id/payment", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { paymentIntentId } = req.body;
+      
+      const analysis = await storage.getAnalysis(id);
+      if (!analysis) {
+        return res.status(404).json({ error: "Analysis not found" });
+      }
+
+      // Verify payment with Stripe
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      if (paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({ error: "Payment not completed" });
+      }
 
       // Update analysis with payment completion
       const updatedAnalysis = await storage.updateAnalysis(id, {
@@ -195,8 +236,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true });
     } catch (error) {
-      console.error("Payment error:", error);
-      res.status(500).json({ error: "Payment failed" });
+      console.error("Payment confirmation error:", error);
+      res.status(500).json({ error: "Payment confirmation failed" });
     }
   });
 
@@ -221,7 +262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const results = JSON.parse(analysis.analysisResults);
-      const pdfBuffer = pdfGenerator.generatePDFReport(
+      const pdfBuffer = await pdfGenerator.generatePDFReport(
         analysis.url,
         analysis.email,
         results,

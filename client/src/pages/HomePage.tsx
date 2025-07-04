@@ -74,9 +74,6 @@ export default function HomePage() {
       privacyAccepted: boolean;
       dataAccepted: boolean;
     }) => updateAnalysisConsent(analysisId!, consents),
-    onSuccess: () => {
-      processPaymentMutation.mutate();
-    },
     onError: () => {
       toast({
         title: "Error",
@@ -88,7 +85,15 @@ export default function HomePage() {
 
   // Process payment mutation
   const processPaymentMutation = useMutation({
-    mutationFn: () => processPayment(analysisId!),
+    mutationFn: (paymentIntentId: string) => {
+      return fetch(`/api/analyses/${analysisId}/payment`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ paymentIntentId }),
+      }).then(res => res.json());
+    },
     onSuccess: () => {
       setPageState("success");
       sendEmailMutation.mutate();
@@ -145,6 +150,10 @@ export default function HomePage() {
     dataAccepted: boolean;
   }) => {
     updateConsentMutation.mutate(consents);
+  };
+
+  const handlePaymentSuccess = (paymentIntentId: string) => {
+    processPaymentMutation.mutate(paymentIntentId);
   };
 
   const handleNewAnalysis = () => {
@@ -249,7 +258,9 @@ export default function HomePage() {
           <div className="max-w-6xl mx-auto space-y-8">
             <AnalysisResults results={analysisResults} />
             <PaymentSection
+              analysisId={analysisId!}
               onPayment={handlePayment}
+              onPaymentSuccess={handlePaymentSuccess}
               isLoading={updateConsentMutation.isPending || processPaymentMutation.isPending}
             />
           </div>
